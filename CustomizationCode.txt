@@ -1,0 +1,586 @@
+// **************************************************
+// Custom code for UD02Form
+// Created: 6/8/2021 6:27:34 PM
+// **************************************************
+using System;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Windows.Forms;
+using Ice.BO;
+using Ice.UI;
+using Ice.Lib;
+using Ice.Adapters;
+using Ice.Lib.Customization;
+using Ice.Lib.ExtendedProps;
+using Ice.Lib.Framework;
+using Ice.Lib.Searches;
+using Ice.UI.FormFunctions;
+using Ice.Proxy.Lib;
+using System.Collections;
+using System.IO;
+
+using Ice.Contracts;
+using System.Collections.Generic;
+using System.Linq;
+using System.Globalization;
+using CsvHelper;
+
+public partial class Script
+{
+	// ** Wizard Insert Location - Do Not Remove 'Begin/End Wizard Added Module Level Variables' Comments! **
+	// Begin Wizard Added Module Level Variables **
+
+	// End Wizard Added Module Level Variables **
+
+	// Add Custom Module Level Variables Here **
+
+	public void InitializeCustomCode()
+	{
+		// ** Wizard Insert Location - Do not delete 'Begin/End Wizard Added Variable Initialization' lines **
+		// Begin Wizard Added Variable Initialization
+
+		// End Wizard Added Variable Initialization
+
+		// Begin Wizard Added Custom Method Calls
+
+		this.baseToolbarsManager.ToolClick += new Infragistics.Win.UltraWinToolbars.ToolClickEventHandler(this.baseToolbarsManager_ToolClick);
+		this.baseToolbarsManager.BeforeToolActivate += new Infragistics.Win.UltraWinToolbars.CancelableToolEventHandler(baseToolbarsManager_BeforeToolActivate);
+		this.btnHideAll.Click += new System.EventHandler(this.btnHideAll_Click);
+		this.btnFindTables.Click += new System.EventHandler(this.btnFindTables_Click);
+		this.btnAllowTablesAccess.Click += new System.EventHandler(this.btnAllowTablesAccess_Click);
+		this.btnLoadFields.Click += new System.EventHandler(this.btnLoadFields_Click);
+		this.btnDownloadTemplate.Click += new System.EventHandler(this.btnDownloadTemplate_Click);
+		this.btnLoadTemplate.Click += new System.EventHandler(this.btnLoadTemplate_Click);
+		this.btnClear.Click += new System.EventHandler(this.btnClear_Click);
+		this.btnValidate.Click += new System.EventHandler(this.btnValidate_Click);
+		this.btnProcess.Click += new System.EventHandler(this.btnProcess_Click);
+		this.btnDLByTable.Click += new System.EventHandler(this.btnDLByTable_Click);
+		this.btnDLByUser.Click += new System.EventHandler(this.btnDLByUser_Click);
+		// End Wizard Added Custom Method Calls
+	}
+
+	public void DestroyCustomCode()
+	{
+		// ** Wizard Insert Location - Do not delete 'Begin/End Wizard Added Object Disposal' lines **
+		// Begin Wizard Added Object Disposal
+
+		this.baseToolbarsManager.ToolClick -= new Infragistics.Win.UltraWinToolbars.ToolClickEventHandler(this.baseToolbarsManager_ToolClick);
+		this.baseToolbarsManager.BeforeToolActivate -= new Infragistics.Win.UltraWinToolbars.CancelableToolEventHandler(baseToolbarsManager_BeforeToolActivate);
+		this.btnHideAll.Click -= new System.EventHandler(this.btnHideAll_Click);
+		this.btnFindTables.Click -= new System.EventHandler(this.btnFindTables_Click);
+		this.btnAllowTablesAccess.Click -= new System.EventHandler(this.btnAllowTablesAccess_Click);
+		this.btnLoadFields.Click -= new System.EventHandler(this.btnLoadFields_Click);
+		this.btnDownloadTemplate.Click -= new System.EventHandler(this.btnDownloadTemplate_Click);
+		this.btnLoadTemplate.Click -= new System.EventHandler(this.btnLoadTemplate_Click);
+		this.btnClear.Click -= new System.EventHandler(this.btnClear_Click);
+		this.btnValidate.Click -= new System.EventHandler(this.btnValidate_Click);
+		this.btnProcess.Click -= new System.EventHandler(this.btnProcess_Click);
+		this.btnDLByUser.Click -= new System.EventHandler(this.btnDLByUser_Click);
+		this.btnDLByTable.Click -= new System.EventHandler(this.btnDLByTable_Click);
+		// End Wizard Added Object Disposal
+
+		// Begin Custom Code Disposal
+
+		// End Custom Code Disposal
+	}
+
+	private void UD02Form_Load(object sender, EventArgs args)
+	{
+		// Add Event Handler Code
+		try
+		{
+			EpiTreeViewPanel tvpanel = (EpiTreeViewPanel)csm.GetNativeControlReference("f7af75a9-d353-43fd-a33d-cf29e24c388a");
+			EpiGroupBox mgrp = (EpiGroupBox)csm.GetNativeControlReference("c205404a-5523-4c79-8a60-d9271a99b21d");
+			EpiButton sbtn = (EpiButton)csm.GetNativeControlReference("3b06b8f2-a9d0-44d0-9aa1-4db6ddc60c77");
+			tvpanel.Visible = false;
+			mgrp.Visible = false;
+			sbtn.Visible = false;
+		}
+		catch (Exception e)
+		{
+			MessageBox.Show(e.Message.ToString());
+		}
+	}
+
+	private void baseToolbarsManager_ToolClick(object sender, Infragistics.Win.UltraWinToolbars.ToolClickEventArgs args)
+	{
+		switch (args.Tool.Key)
+		{
+			case "RefreshTool":
+				//TODO refresh the grid
+				break;
+		}
+	}
+	private static void baseToolbarsManager_BeforeToolActivate(object sender, Infragistics.Win.UltraWinToolbars.CancelableToolEventArgs args)
+	{
+		switch (args.Tool.Key)
+		{
+			case "NewTool":
+				args.Cancel = true;
+				break;
+			case "DeleteTool":
+				args.Cancel = true;
+				break;
+			case "ClearTool":
+				args.Cancel = true;
+				break;
+			case "SaveTool":
+				args.Cancel = true;
+				break;
+			case "PrimarySearchTool":
+				args.Cancel = true;
+				break;
+		}
+	}
+
+	private void btnLoadFields_Click(object sender, System.EventArgs args)
+	{
+		Ice.Proxy.BO.DynamicQueryImpl dq = WCFServiceSupport.CreateImpl<Ice.Proxy.BO.DynamicQueryImpl>(FormFunctions.getILaunchSession(oTrans), Ice.Proxy.BO.DynamicQueryImpl.UriPath);
+
+		//All fields in epicor
+		string qid = "TPC_FSM_Fields";
+		Ice.BO.QueryExecutionDataSet dsParams = new QueryExecutionDataSet();
+		//All fields for user you want to use
+		string qid2 = "TPC_FSM_FieldsWithSecurity";
+		Ice.BO.QueryExecutionDataSet dsParams2 = new QueryExecutionDataSet();
+
+		if (!String.IsNullOrEmpty(tbxGroup.Value.ToString()))
+		{
+			dsParams2.ExecutionParameter.AddExecutionParameterRow("userorgroup", tbxGroup.Value.ToString(), "nvarchar", false, new Guid(), "A");
+		}
+
+		DataSet ds = dq.ExecuteByID(qid, dsParams);
+		DataSet ds2 = dq.ExecuteByID(qid2, dsParams2);
+		DataSet final = new DataSet();
+		final.Tables.Add();
+		final.Tables[0].Columns.Add("Schema");
+		final.Tables[0].Columns.Add("TableName");
+		final.Tables[0].Columns.Add("FieldName");
+
+		Hashtable myHash = new Hashtable();
+		Hashtable mySecondHash = new Hashtable();
+
+		Dictionary<string, Dictionary<string, string>> fieldsDict = new Dictionary<string, Dictionary<string, string>>();
+		List<string> myList = new List<string>();
+		List<string> mySecondList = new List<string>();
+		List<string> finalList = new List<string>();
+
+
+		for (int i = 0; i < ds.Tables["Results"].Rows.Count; i++)
+		{
+			var row = ds.Tables["Results"].Rows[i];
+			var key = row.Field<string>("ZDataField_SystemCode").ToUpper() + "," + row.Field<string>("ZDataField_DBTableName").ToUpper() + "," + row.Field<string>("ZDataField_DBFieldName").ToUpper();
+			myList.Add(key);
+		}
+
+		for (int i = 0; i < ds2.Tables["Results"].Rows.Count; i++)
+		{
+			var row = ds2.Tables["Results"].Rows[i];
+			var key = row.Field<string>("SecColumn_SchemaName").ToUpper() + "," + row.Field<string>("SecColumn_TableName").ToUpper() + "," + row.Field<string>("SecColumn_ColumnName").ToUpper();
+			mySecondList.Add(key);
+		}
+
+
+		myList.RemoveAll(x => x == mySecondList.Find(y => y == x));
+
+		myList.ForEach(delegate (String val)
+		{
+			string[] cols = val.Split(',');
+
+			final.Tables[0].Rows.Add(cols[0], cols[1], cols[2]);
+		});
+		eugResults.DataSource = final;
+	}
+
+	private void btnHideAll_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		if (tbxGroup.Value.ToString() != "")
+		{
+			SecColumnAdapter sca = new SecColumnAdapter(oTrans);
+
+			DataSet ds = (DataSet)eugResults.DataSource;
+			sca.BOConnect();
+
+			string schema, tn, fn;
+
+			EpiDataView c = (EpiDataView)oTrans.EpiDataViews["callContextClientData"];
+
+			for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
+			{
+				schema = ds.Tables[0].Rows[i].Field<string>("Schema");
+				tn = ds.Tables[0].Rows[i].Field<string>("TableName");
+				fn = ds.Tables[0].Rows[i].Field<string>("FieldName");
+
+				Hashtable myHash = new Hashtable();
+				myHash.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + schema + "' and TableName = '" + tn + "' and ColumnName = '" + fn + "' BY TableName");
+				SearchOptions so = SearchOptions.CreateRuntimeSearch(myHash, DataSetMode.RowsDataSet);
+				sca.InvokeSearch(so);
+				var row = sca.SecColumnData.SecColumn[0];
+				row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
+				row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
+				
+				sca.Update();
+			}
+			sca.Dispose();
+			MessageBox.Show("All fields hidden");
+		}
+	}
+
+	private void btnFindTables_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		Ice.Proxy.BO.DynamicQueryImpl dq = WCFServiceSupport.CreateImpl<Ice.Proxy.BO.DynamicQueryImpl>(FormFunctions.getILaunchSession(oTrans), Ice.Proxy.BO.DynamicQueryImpl.UriPath);
+
+		//All tables in epicor
+		string qid = "TPC_FSM_Tables";
+		Ice.BO.QueryExecutionDataSet dsParams = new QueryExecutionDataSet();
+
+		DataSet ds = dq.ExecuteByID(qid, dsParams);
+
+		eugAvailableTables.DataSource = ds;
+	}
+
+	private void btnAllowTablesAccess_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		DataSet ds = (DataSet)eugAvailableTables.DataSource;
+		ds.AcceptChanges();
+
+		string secgrp = tbxGroup.Value.ToString();
+
+		if (String.IsNullOrEmpty(secgrp))
+		{
+			MessageBox.Show("Security Group cannot be empty");
+			return;
+		}
+
+		for (int i = 0; i < ds.Tables["Results"].Rows.Count; i++)
+		{
+			var row = ds.Tables["Results"].Rows[i];
+			bool cf = row.Field<bool>("Calculated_CheckField") == true;
+			string tn = row.Field<string>("ZDataField_DataTableID");
+			string sn = row.Field<string>("ZDataField_SystemCode");
+			if (cf == true)
+			{
+				try
+				{
+					SecColumnAdapter sca = new SecColumnAdapter(oTrans);
+
+					EpiDataView c = (EpiDataView)oTrans.EpiDataViews["callContextClientData"];
+
+					Hashtable hs = new Hashtable();
+					hs.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + sn + "' and TableName = '" + tn + "' BY TableName");
+					SearchOptions so = SearchOptions.CreateRuntimeSearch(hs, DataSetMode.RowsDataSet);
+					sca.InvokeSearch(so);
+					foreach (SecColumnDataSet.SecColumnRow scr in sca.SecColumnData.SecColumn)
+					{
+						scr.BeginEdit();
+						if (scr.WriteAllowList.Contains(secgrp))
+						{
+							scr.WriteAllowList = scr.WriteAllowList.Replace(secgrp, string.Empty).Replace(",,", ",");
+						}
+						if (!scr.WriteDenyList.Contains(secgrp))
+						{
+							scr.WriteDenyList = String.IsNullOrEmpty(scr.WriteDenyList) ? secgrp : scr.WriteDenyList + "," + secgrp;
+						}
+						if (!scr.ReadAllowList.Contains(secgrp))
+						{
+							scr.ReadAllowList = String.IsNullOrEmpty(scr.ReadAllowList) ? secgrp : scr.ReadAllowList + "," + secgrp;
+						}
+						if (scr.ReadDenyList.Contains(secgrp))
+						{
+							scr.ReadDenyList = scr.ReadDenyList.Replace(secgrp, string.Empty).Replace(",,", ",");
+						}
+						scr.EndEdit();
+					}
+
+					sca.Update();
+				}
+				catch (Exception e)
+				{
+					MessageBox.Show(e.Message.ToString());
+				}
+			}
+		}
+		MessageBox.Show("Access to selected tables set to Read Only");
+
+	}
+
+	private void btnDownloadTemplate_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+
+		using (FolderBrowserDialog d = new FolderBrowserDialog())
+		{
+			d.Description = "DMT template save location";
+			if (d.ShowDialog() == DialogResult.OK)
+			{
+				string sPath = d.SelectedPath;
+				SecColumnAdapter a = new SecColumnAdapter(oTrans);
+
+				using (var writer = new StreamWriter(sPath + "\\SecColumnTemplate.csv"))
+				using (CsvWriter csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+				{
+					csv.WriteField("Company");
+					csv.WriteField("DatasourceType");
+					csv.WriteField("SchemaName");
+					csv.WriteField("TableName");
+					csv.WriteField("ColumnName");
+					csv.WriteField("WriteAllowList");
+					csv.WriteField("WriteDenyList");
+					csv.WriteField("ReadAllowList");
+					csv.WriteField("ReadDenyList");
+					csv.WriteField("SysRevID");
+					csv.WriteField("SysRowID");
+					csv.WriteField("Mask");
+					csv.WriteField("UnmaskedAllowList");
+					csv.WriteField("UnmaskedDenyList");
+					csv.WriteField("AllCompanies");
+					csv.WriteField("BitFlag");
+					csv.WriteField("RowMod");
+				}
+			}
+		}
+		MessageBox.Show("Template Saved");
+	}
+
+	private void btnDLByUser_Click(object sender, System.EventArgs args)
+	{
+		Ice.Proxy.BO.DynamicQueryImpl dq = WCFServiceSupport.CreateImpl<Ice.Proxy.BO.DynamicQueryImpl>(FormFunctions.getILaunchSession(oTrans), Ice.Proxy.BO.DynamicQueryImpl.UriPath);
+
+		SecColumnAdapter s = new SecColumnAdapter(oTrans);
+		s.BOConnect();
+
+		if (!String.IsNullOrEmpty(tbxDLBUGroup.Value.ToString()))
+		{
+			using (FolderBrowserDialog d = new FolderBrowserDialog())
+			{
+				d.Description = "DMT template save location";
+				if (d.ShowDialog() == DialogResult.OK)
+				{
+					string sPath = d.SelectedPath;
+					SecColumnAdapter a = new SecColumnAdapter(oTrans);
+
+					using (var writer = new StreamWriter(sPath + "\\SecColumnTemplate.csv"))
+					using (CsvWriter csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+					{
+						csv.WriteField("Company");
+						csv.WriteField("DatasourceType");
+						csv.WriteField("SchemaName");
+						csv.WriteField("TableName");
+						csv.WriteField("ColumnName");
+						csv.WriteField("WriteAllowList");
+						csv.WriteField("WriteDenyList");
+						csv.WriteField("ReadAllowList");
+						csv.WriteField("ReadDenyList");
+						csv.WriteField("SysRevID");
+						csv.WriteField("SysRowID");
+						csv.WriteField("Mask");
+						csv.WriteField("UnmaskedAllowList");
+						csv.WriteField("UnmaskedDenyList");
+						csv.WriteField("AllCompanies");
+						csv.WriteField("BitFlag");
+						csv.WriteField("RowMod");
+						csv.NextRecord();
+
+
+						// Query to see all users specific security
+						string qid2 = "TPC_FSM_FieldsWithSecurity";
+						Ice.BO.QueryExecutionDataSet dsParams2 = new QueryExecutionDataSet();
+
+
+						dsParams2.ExecutionParameter.AddExecutionParameterRow("userorgroup", tbxDLBUGroup.Value.ToString(), "nvarchar", false, new Guid(), "A");
+						DataSet ds2 = dq.ExecuteByID(qid2, dsParams2);
+
+						foreach (DataRow v in ds2.Tables["Results"].Rows)
+						{
+							csv.WriteField(v.Field<string>("SecColumn_Company"));
+							csv.WriteField(v.Field<string>("SecColumn_DatasourceType"));
+							csv.WriteField(v.Field<string>("SecColumn_SchemaName"));
+							csv.WriteField(v.Field<string>("SecColumn_TableName"));
+							csv.WriteField(v.Field<string>("SecColumn_ColumnName"));
+							csv.WriteField(v.Field<string>("SecColumn_WriteAllowList"));
+							csv.WriteField(v.Field<string>("SecColumn_WriteDenyList"));
+							csv.WriteField(v.Field<string>("SecColumn_ReadAllowList"));
+							csv.WriteField(v.Field<string>("SecColumn_ReadDenyList"));
+							csv.WriteField(v.Field<Int64>("SecColumn_SysRevID").ToString());
+							csv.WriteField(v.Field<Guid>("SecColumn_SysRowID").ToString());
+							csv.WriteField(v.Field<string>("SecColumn_Mask"));
+							csv.WriteField(v.Field<string>("SecColumn_UnmaskedAllowList"));
+							csv.WriteField(v.Field<string>("SecColumn_UnmaskedDenyList"));
+							csv.WriteField(v.Field<bool>("SecColumn_AllCompanies").ToString());
+							csv.WriteField(v.Field<int>("SecColumn_BitFlag").ToString());
+							csv.WriteField(v.Field<string>("SecColumn_RowMod"));
+							csv.NextRecord();
+						}
+					}
+				}
+			}
+		}
+		s.Dispose();
+		MessageBox.Show("Template creation complete");
+	}
+
+	private void btnDLByTable_Click(object sender, System.EventArgs args)
+	{
+		SecColumnAdapter s = new SecColumnAdapter(oTrans);
+		s.BOConnect();
+
+		using (FolderBrowserDialog d = new FolderBrowserDialog())
+		{
+			d.Description = "DMT template save location";
+			if (d.ShowDialog() == DialogResult.OK)
+			{
+				string sPath = d.SelectedPath;
+				SecColumnAdapter a = new SecColumnAdapter(oTrans);
+
+				using (var writer = new StreamWriter(sPath + "\\SecColumnTemplate.csv"))
+				using (CsvWriter csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+				{
+					csv.WriteField("Company");
+					csv.WriteField("DatasourceType");
+					csv.WriteField("SchemaName");
+					csv.WriteField("TableName");
+					csv.WriteField("ColumnName");
+					csv.WriteField("WriteAllowList");
+					csv.WriteField("WriteDenyList");
+					csv.WriteField("ReadAllowList");
+					csv.WriteField("ReadDenyList");
+					csv.WriteField("SysRevID");
+					csv.WriteField("SysRowID");
+					csv.WriteField("Mask");
+					csv.WriteField("UnmaskedAllowList");
+					csv.WriteField("UnmaskedDenyList");
+					csv.WriteField("AllCompanies");
+					csv.WriteField("BitFlag");
+					csv.WriteField("RowMod");
+					csv.NextRecord();
+
+					DataSet ds = (DataSet)eugAvailableTables.DataSource;
+
+					EpiDataView c = (EpiDataView)oTrans.EpiDataViews["callContextClientData"];
+
+					foreach (DataRow dr in ds.Tables["Results"].Rows)
+					{
+						if (dr.Field<bool>("Calculated_CheckField"))
+						{
+							Hashtable hs = new Hashtable();
+							hs.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + dr.Field<string>("ZDataField_SystemCode") + "' and TableName = '" + dr.Field<string>("ZDataField_DataTableID") + "' BY TableName");
+							SearchOptions so = SearchOptions.CreateRuntimeSearch(hs, DataSetMode.RowsDataSet);
+							s.InvokeSearch(so);
+
+							foreach (var v in s.SecColumnData.SecColumn.AsEnumerable())
+							{
+								csv.WriteField(v.Field<string>("Company"));
+								csv.WriteField(v.Field<string>("DatasourceType"));
+								csv.WriteField(v.Field<string>("SchemaName"));
+								csv.WriteField(v.Field<string>("TableName"));
+								csv.WriteField(v.Field<string>("ColumnName"));
+								csv.WriteField(v.Field<string>("WriteAllowList"));
+								csv.WriteField(v.Field<string>("WriteDenyList"));
+								csv.WriteField(v.Field<string>("ReadAllowList"));
+								csv.WriteField(v.Field<string>("ReadDenyList"));
+								csv.WriteField(v.Field<Int64>("SysRevID").ToString());
+								csv.WriteField(v.Field<Guid>("SysRowID").ToString());
+								csv.WriteField(v.Field<string>("Mask"));
+								csv.WriteField(v.Field<string>("UnmaskedAllowList"));
+								csv.WriteField(v.Field<string>("UnmaskedDenyList"));
+								csv.WriteField(v.Field<bool>("AllCompanies").ToString());
+								csv.WriteField(v.Field<int>("BitFlag").ToString());
+								csv.WriteField(v.Field<string>("RowMod"));
+								csv.NextRecord();
+							}
+						}
+					}
+
+				}
+			}
+		}
+		s.Dispose();
+		MessageBox.Show("Template creation complete");
+	}
+
+	private void btnLoadTemplate_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+
+		using (OpenFileDialog openFileDialog = new OpenFileDialog())
+		{
+			openFileDialog.InitialDirectory = "c:\\";
+			openFileDialog.Filter = "Csv files (*.csv)|*.csv|All files (*.*)|*.*";
+			openFileDialog.FilterIndex = 2;
+			openFileDialog.RestoreDirectory = true;
+
+			if (openFileDialog.ShowDialog() == DialogResult.OK)
+			{
+				//Read the contents of the file into a stream
+				var fileStream = openFileDialog.OpenFile();
+
+				using (StreamReader reader = new StreamReader(fileStream))
+				using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+				{
+					using (var dr = new CsvDataReader(csv))
+					{
+						var dt = new DataTable();
+						dt.Load(dr);
+						eugDMTView.DataSource = dt;
+					}
+				}
+			}
+		}
+
+
+	}
+
+	private void btnClear_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		eugDMTView.DataSource = null;
+	}
+
+	private void btnValidate_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		MessageBox.Show("Use Eyes");
+	}
+
+	private void btnProcess_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		SecColumnAdapter a = new SecColumnAdapter(oTrans);
+
+		a.BOConnect();
+		DataTable dt = (DataTable)eugDMTView.DataSource;
+
+		for (int i = 0; i < dt.Rows.Count; i++)
+		{
+			var r = dt.Rows[i];
+			Hashtable hs = new Hashtable();
+			hs.Add("SecColumn", "Company = '" + r.Field<string>("Company") + "' and DatasourceType = '" + r.Field<string>("DatasourceType") + "' and SchemaName = '" + r.Field<string>("SchemaName") + "' and TableName = '" + r.Field<string>("TableName") + "' and ColumnName = '" + r.Field<string>("ColumnName") + "' BY TableName");
+			SearchOptions so = SearchOptions.CreateRuntimeSearch(hs, DataSetMode.RowsDataSet);
+			a.InvokeSearch(so);
+
+			a.SecColumnData.SecColumn[0].Company = r.Field<string>("Company");
+			a.SecColumnData.SecColumn[0].DatasourceType = r.Field<string>("DatasourceType");
+			a.SecColumnData.SecColumn[0].SchemaName = r.Field<string>("SchemaName");
+			a.SecColumnData.SecColumn[0].TableName = r.Field<string>("TableName");
+			a.SecColumnData.SecColumn[0].ColumnName = r.Field<string>("ColumnName");
+			a.SecColumnData.SecColumn[0].WriteAllowList = r.Field<string>("WriteAllowList");
+			a.SecColumnData.SecColumn[0].WriteDenyList = r.Field<string>("WriteDenyList");
+			a.SecColumnData.SecColumn[0].ReadAllowList = r.Field<string>("ReadAllowList");
+			a.SecColumnData.SecColumn[0].ReadDenyList = r.Field<string>("ReadDenyList");
+			a.SecColumnData.SecColumn[0].SysRevID = long.Parse(r.Field<string>("SysRevID"));
+			a.SecColumnData.SecColumn[0].SysRowID = Guid.Parse(r.Field<string>("SysRowID"));
+			a.SecColumnData.SecColumn[0].Mask = r.Field<string>("Mask");
+			a.SecColumnData.SecColumn[0].UnmaskedAllowList = r.Field<string>("UnmaskedAllowList");
+			a.SecColumnData.SecColumn[0].UnmaskedDenyList = r.Field<string>("UnmaskedDenyList");
+			a.SecColumnData.SecColumn[0].AllCompanies = bool.Parse(r.Field<string>("AllCompanies"));
+			a.SecColumnData.SecColumn[0].BitFlag = int.Parse(r.Field<string>("BitFlag"));
+			a.Update();
+		}
+		MessageBox.Show("Upload Complete");
+		a.Dispose();
+	}
+}
