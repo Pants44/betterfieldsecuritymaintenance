@@ -26,7 +26,7 @@ using System.Linq;
 using System.Globalization;
 using CsvHelper;
 
-public partial class Script
+public class Script
 {
 	// ** Wizard Insert Location - Do Not Remove 'Begin/End Wizard Added Module Level Variables' Comments! **
 	// Begin Wizard Added Module Level Variables **
@@ -57,6 +57,7 @@ public partial class Script
 		this.btnProcess.Click += new System.EventHandler(this.btnProcess_Click);
 		this.btnDLByTable.Click += new System.EventHandler(this.btnDLByTable_Click);
 		this.btnDLByUser.Click += new System.EventHandler(this.btnDLByUser_Click);
+		this.btnAllowIceFull.Click += new System.EventHandler(this.btnAllowIceFull_Click);
 		// End Wizard Added Custom Method Calls
 	}
 
@@ -78,6 +79,7 @@ public partial class Script
 		this.btnProcess.Click -= new System.EventHandler(this.btnProcess_Click);
 		this.btnDLByUser.Click -= new System.EventHandler(this.btnDLByUser_Click);
 		this.btnDLByTable.Click -= new System.EventHandler(this.btnDLByTable_Click);
+		this.btnAllowIceFull.Click -= new System.EventHandler(this.btnAllowIceFull_Click);
 		// End Wizard Added Object Disposal
 
 		// Begin Custom Code Disposal
@@ -196,6 +198,7 @@ public partial class Script
 	private void btnHideAll_Click(object sender, System.EventArgs args)
 	{
 		// ** Place Event Handling Code Here **
+
 		if (tbxGroup.Value.ToString() != "")
 		{
 			SecColumnAdapter sca = new SecColumnAdapter(oTrans);
@@ -212,16 +215,26 @@ public partial class Script
 				schema = ds.Tables[0].Rows[i].Field<string>("Schema");
 				tn = ds.Tables[0].Rows[i].Field<string>("TableName");
 				fn = ds.Tables[0].Rows[i].Field<string>("FieldName");
-
 				Hashtable myHash = new Hashtable();
 				myHash.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + schema + "' and TableName = '" + tn + "' and ColumnName = '" + fn + "' BY TableName");
 				SearchOptions so = SearchOptions.CreateRuntimeSearch(myHash, DataSetMode.RowsDataSet);
 				sca.InvokeSearch(so);
-				var row = sca.SecColumnData.SecColumn[0];
-				row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
-				row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
-				
-				sca.Update();
+				if (sca.SecColumnData.SecColumn.Rows.Count > 0)
+				{
+					var row = sca.SecColumnData.SecColumn[0];
+					row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
+					row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
+					sca.Update();
+				}
+				else 
+				{
+					sca.GetNewSecColumn(c.CurrentDataRow.Field<string>("CurrentCompany"), "", schema, tn);
+					var row = sca.SecColumnData.SecColumn[0];
+					row.ColumnName = fn;
+					row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
+					row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
+					sca.Update();
+				}
 			}
 			sca.Dispose();
 			MessageBox.Show("All fields hidden");
@@ -260,8 +273,8 @@ public partial class Script
 		{
 			var row = ds.Tables["Results"].Rows[i];
 			bool cf = row.Field<bool>("Calculated_CheckField") == true;
-			string tn = row.Field<string>("ZDataField_DataTableID");
-			string sn = row.Field<string>("ZDataField_SystemCode");
+			string tn = row.Field<string>("ZDataTable_DBTableName");
+			string sn = row.Field<string>("ZDataTable_SystemCode");
 			if (cf == true)
 			{
 				try
@@ -467,7 +480,7 @@ public partial class Script
 						if (dr.Field<bool>("Calculated_CheckField"))
 						{
 							Hashtable hs = new Hashtable();
-							hs.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + dr.Field<string>("ZDataField_SystemCode") + "' and TableName = '" + dr.Field<string>("ZDataField_DataTableID") + "' BY TableName");
+							hs.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + dr.Field<string>("ZDataTable_SystemCode") + "' and TableName = '" + dr.Field<string>("ZDataTable_DBTableName") + "' BY TableName");
 							SearchOptions so = SearchOptions.CreateRuntimeSearch(hs, DataSetMode.RowsDataSet);
 							s.InvokeSearch(so);
 
@@ -582,5 +595,69 @@ public partial class Script
 		}
 		MessageBox.Show("Upload Complete");
 		a.Dispose();
+	}
+
+	private void btnAllowIceFull_Click(object sender, System.EventArgs args)
+	{
+		// ** Place Event Handling Code Here **
+		DataSet ds = (DataSet)eugAvailableTables.DataSource;
+		ds.AcceptChanges();
+
+		string secgrp = tbxGroup.Value.ToString();
+
+		if (String.IsNullOrEmpty(secgrp))
+		{
+			MessageBox.Show("Security Group cannot be empty");
+			return;
+		}
+
+		for (int i = 0; i < ds.Tables["Results"].Rows.Count; i++)
+		{
+			var row = ds.Tables["Results"].Rows[i];
+			string tn = row.Field<string>("ZDataTable_DBTableName");
+			string sn = row.Field<string>("ZDataTable_SystemCode");
+			try
+			{
+				if (sn.ToUpper() == "ICE")
+				{
+					SecColumnAdapter sca = new SecColumnAdapter(oTrans);
+
+					EpiDataView c = (EpiDataView)oTrans.EpiDataViews["callContextClientData"];
+
+					Hashtable hs = new Hashtable();
+					hs.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + sn + "' and TableName = '" + tn + "' BY TableName");
+					SearchOptions so = SearchOptions.CreateRuntimeSearch(hs, DataSetMode.RowsDataSet);
+					sca.InvokeSearch(so);
+					foreach (SecColumnDataSet.SecColumnRow scr in sca.SecColumnData.SecColumn)
+					{
+						scr.BeginEdit();
+						if (scr.WriteAllowList.Contains(secgrp))
+						{
+							scr.WriteAllowList = scr.WriteAllowList.Replace(secgrp, string.Empty).Replace(",,", ",");
+						}
+						if (scr.WriteDenyList.Contains(secgrp))
+						{
+							scr.WriteDenyList = scr.WriteDenyList.Replace(secgrp, string.Empty).Replace(",,", ",");
+						}
+						if (scr.ReadAllowList.Contains(secgrp))
+						{
+							scr.ReadAllowList = scr.ReadAllowList.Replace(secgrp, string.Empty).Replace(",,", ",");
+						}
+						if (scr.ReadDenyList.Contains(secgrp))
+						{
+							scr.ReadDenyList = scr.ReadDenyList.Replace(secgrp, string.Empty).Replace(",,", ",");
+						}
+						scr.EndEdit();
+					}
+
+					sca.Update();
+				}
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show(e.Message.ToString());
+			}
+		}
+		MessageBox.Show("Access to ice tables restored");
 	}
 }
