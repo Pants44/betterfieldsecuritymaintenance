@@ -1,8 +1,6 @@
 # betterfieldsecuritymaintenance
 Epicor Better Field Security Maintenance
 
-**** Hold off on using the data access portion, something about making all fields readonly is not allowing my test user to sign in when assigned my new security group ****
-
 The original reason for the creation of this screen was to help me create some read only access to the BAQ Designer screen for one of my users. I wanted to enable one of my current Power Users with access to the tables so she could better do her job, without having to much access to anything she didn’t need. After seeing some need in the community I expanded upon it to work in a variety of ways.
 
 This is not an official Epicor product and is to be used AT YOUR OWN RISK. I will not be responsible for any damages, security clearance issues this could cause, or anything else… Test the solution thoroughly before trusting some guy on the internet.
