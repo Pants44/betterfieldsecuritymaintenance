@@ -147,59 +147,63 @@ public class Script
 		string qid2 = "TPC_FSM_FieldsWithSecurity";
 		Ice.BO.QueryExecutionDataSet dsParams2 = new QueryExecutionDataSet();
 
-		if (!String.IsNullOrEmpty(tbxGroup.Value.ToString()))
+		if (!string.IsNullOrEmpty(tbxGroup.Text.ToString()))
 		{
-			dsParams2.ExecutionParameter.AddExecutionParameterRow("userorgroup", tbxGroup.Value.ToString(), "nvarchar", false, new Guid(), "A");
+			dsParams2.ExecutionParameter.AddExecutionParameterRow("userorgroup", tbxGroup.Text.ToString(), "nvarchar", false, new Guid(), "A");
+			DataSet ds = dq.ExecuteByID(qid, dsParams);
+			DataSet ds2 = dq.ExecuteByID(qid2, dsParams2);
+			DataSet final = new DataSet();
+			final.Tables.Add();
+			final.Tables[0].Columns.Add("Schema");
+			final.Tables[0].Columns.Add("TableName");
+			final.Tables[0].Columns.Add("FieldName");
+
+			Hashtable myHash = new Hashtable();
+			Hashtable mySecondHash = new Hashtable();
+
+			Dictionary<string, Dictionary<string, string>> fieldsDict = new Dictionary<string, Dictionary<string, string>>();
+			List<string> myList = new List<string>();
+			List<string> mySecondList = new List<string>();
+			List<string> finalList = new List<string>();
+
+
+			for (int i = 0; i < ds.Tables["Results"].Rows.Count; i++)
+			{
+				var row = ds.Tables["Results"].Rows[i];
+				var key = row.Field<string>("ZDataField_SystemCode").ToUpper() + "," + row.Field<string>("ZDataField_DBTableName").ToUpper() + "," + row.Field<string>("ZDataField_DBFieldName").ToUpper();
+				myList.Add(key);
+			}
+
+			for (int i = 0; i < ds2.Tables["Results"].Rows.Count; i++)
+			{
+				var row = ds2.Tables["Results"].Rows[i];
+				var key = row.Field<string>("SecColumn_SchemaName").ToUpper() + "," + row.Field<string>("SecColumn_TableName").ToUpper() + "," + row.Field<string>("SecColumn_ColumnName").ToUpper();
+				mySecondList.Add(key);
+			}
+
+
+			myList.RemoveAll(x => x == mySecondList.Find(y => y == x));
+
+			myList.ForEach(delegate (String val)
+			{
+				string[] cols = val.Split(',');
+
+				final.Tables[0].Rows.Add(cols[0], cols[1], cols[2]);
+			});
+			eugResults.DataSource = final;
 		}
-
-		DataSet ds = dq.ExecuteByID(qid, dsParams);
-		DataSet ds2 = dq.ExecuteByID(qid2, dsParams2);
-		DataSet final = new DataSet();
-		final.Tables.Add();
-		final.Tables[0].Columns.Add("Schema");
-		final.Tables[0].Columns.Add("TableName");
-		final.Tables[0].Columns.Add("FieldName");
-
-		Hashtable myHash = new Hashtable();
-		Hashtable mySecondHash = new Hashtable();
-
-		Dictionary<string, Dictionary<string, string>> fieldsDict = new Dictionary<string, Dictionary<string, string>>();
-		List<string> myList = new List<string>();
-		List<string> mySecondList = new List<string>();
-		List<string> finalList = new List<string>();
-
-
-		for (int i = 0; i < ds.Tables["Results"].Rows.Count; i++)
+		else
 		{
-			var row = ds.Tables["Results"].Rows[i];
-			var key = row.Field<string>("ZDataField_SystemCode").ToUpper() + "," + row.Field<string>("ZDataField_DBTableName").ToUpper() + "," + row.Field<string>("ZDataField_DBFieldName").ToUpper();
-			myList.Add(key);
+			MessageBox.Show("Fill out a user or group");
+			return;
 		}
-
-		for (int i = 0; i < ds2.Tables["Results"].Rows.Count; i++)
-		{
-			var row = ds2.Tables["Results"].Rows[i];
-			var key = row.Field<string>("SecColumn_SchemaName").ToUpper() + "," + row.Field<string>("SecColumn_TableName").ToUpper() + "," + row.Field<string>("SecColumn_ColumnName").ToUpper();
-			mySecondList.Add(key);
-		}
-
-
-		myList.RemoveAll(x => x == mySecondList.Find(y => y == x));
-
-		myList.ForEach(delegate (String val)
-		{
-			string[] cols = val.Split(',');
-
-			final.Tables[0].Rows.Add(cols[0], cols[1], cols[2]);
-		});
-		eugResults.DataSource = final;
 	}
 
 	private void btnHideAll_Click(object sender, System.EventArgs args)
 	{
 		// ** Place Event Handling Code Here **
 
-		if (tbxGroup.Value.ToString() != "")
+		if (tbxGroup.Text.ToString() != "")
 		{
 			SecColumnAdapter sca = new SecColumnAdapter(oTrans);
 
@@ -215,29 +219,43 @@ public class Script
 				schema = ds.Tables[0].Rows[i].Field<string>("Schema");
 				tn = ds.Tables[0].Rows[i].Field<string>("TableName");
 				fn = ds.Tables[0].Rows[i].Field<string>("FieldName");
-				Hashtable myHash = new Hashtable();
-				myHash.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + schema + "' and TableName = '" + tn + "' and ColumnName = '" + fn + "' BY TableName");
-				SearchOptions so = SearchOptions.CreateRuntimeSearch(myHash, DataSetMode.RowsDataSet);
-				sca.InvokeSearch(so);
-				if (sca.SecColumnData.SecColumn.Rows.Count > 0)
+
+				//Applying security to the TaxSvcConfig table will prevent ALL screens from opening for that user or group
+				if (tn == "TAXSVCCONFIG")
 				{
-					var row = sca.SecColumnData.SecColumn[0];
-					row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
-					row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
-					sca.Update();
+					continue;
 				}
-				else 
+				else
 				{
-					sca.GetNewSecColumn(c.CurrentDataRow.Field<string>("CurrentCompany"), "", schema, tn);
-					var row = sca.SecColumnData.SecColumn[0];
-					row.ColumnName = fn;
-					row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
-					row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
-					sca.Update();
+					Hashtable myHash = new Hashtable();
+					myHash.Add("SecColumn", "Company = '" + c.CurrentDataRow.Field<string>("CurrentCompany") + "' and DatasourceType = '' and SchemaName = '" + schema + "' and TableName = '" + tn + "' and ColumnName = '" + fn + "' BY TableName");
+					SearchOptions so = SearchOptions.CreateRuntimeSearch(myHash, DataSetMode.RowsDataSet);
+					sca.InvokeSearch(so);
+					if (sca.SecColumnData.SecColumn.Rows.Count > 0)
+					{
+						var row = sca.SecColumnData.SecColumn[0];
+						row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
+						row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
+						sca.Update();
+					}
+					else
+					{
+						sca.GetNewSecColumn(c.CurrentDataRow.Field<string>("CurrentCompany"), "", schema, tn);
+						var row = sca.SecColumnData.SecColumn[0];
+						row.ColumnName = fn;
+						row.WriteDenyList = String.IsNullOrEmpty(row.WriteDenyList) ? tbxGroup.Value.ToString() : row.WriteDenyList + "," + tbxGroup.Value.ToString();
+						row.ReadDenyList = String.IsNullOrEmpty(row.ReadDenyList) ? tbxGroup.Value.ToString() : row.ReadDenyList + "," + tbxGroup.Value.ToString();
+						sca.Update();
+					}
 				}
 			}
 			sca.Dispose();
 			MessageBox.Show("All fields hidden");
+		}
+		else
+		{
+			MessageBox.Show("Fill out a user or group");
+			return;
 		}
 	}
 
@@ -261,7 +279,7 @@ public class Script
 		DataSet ds = (DataSet)eugAvailableTables.DataSource;
 		ds.AcceptChanges();
 
-		string secgrp = tbxGroup.Value.ToString();
+		string secgrp = tbxGroup.Text.ToString();
 
 		if (String.IsNullOrEmpty(secgrp))
 		{
@@ -366,7 +384,7 @@ public class Script
 		SecColumnAdapter s = new SecColumnAdapter(oTrans);
 		s.BOConnect();
 
-		if (!String.IsNullOrEmpty(tbxDLBUGroup.Value.ToString()))
+		if (!String.IsNullOrEmpty(tbxDLBUGroup.Text.ToString()))
 		{
 			using (FolderBrowserDialog d = new FolderBrowserDialog())
 			{
@@ -431,9 +449,14 @@ public class Script
 					}
 				}
 			}
+			MessageBox.Show("Template creation complete");
+		}
+		else
+		{
+			MessageBox.Show("Fill out a user or group");
+			return;
 		}
 		s.Dispose();
-		MessageBox.Show("Template creation complete");
 	}
 
 	private void btnDLByTable_Click(object sender, System.EventArgs args)
@@ -603,7 +626,7 @@ public class Script
 		DataSet ds = (DataSet)eugAvailableTables.DataSource;
 		ds.AcceptChanges();
 
-		string secgrp = tbxGroup.Value.ToString();
+		string secgrp = tbxGroup.Text.ToString();
 
 		if (String.IsNullOrEmpty(secgrp))
 		{
